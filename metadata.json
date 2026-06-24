@@ -1,0 +1,8 @@
+{
+	"name": "Click Unbait",
+	"author": "Pierre Mavro, Thomas Burq",
+	"description": "Automatically rewrite clickbait article titles using AI providers (Gemini, Claude, ChatGPT, Ollama)",
+	"version": "1.0.0",
+	"entrypoint": "AiTitle",
+	"type": "user"
+}
