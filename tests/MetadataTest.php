@@ -41,9 +41,8 @@ final class MetadataTest extends TestCase {
 		self::assertTrue(class_exists($className), "Class {$className} does not exist");
 	}
 
-	public function testControllerClassExists(): void {
-		$className = 'FreshExtension_' . self::$metadata['entrypoint'] . '_Controller';
-		self::assertTrue(class_exists($className), "Class {$className} does not exist");
+	public function testServiceClassExists(): void {
+		self::assertTrue(class_exists('AiTitleService'), 'Class AiTitleService does not exist');
 	}
 
 	public function testJsonIsValid(): void {

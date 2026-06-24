@@ -137,6 +137,7 @@ class FreshRSS_Entry {
 	public function title(): string { return $this->title; }
 	public function content(): string { return $this->content; }
 	public function link(): string { return $this->link; }
+	public function _title(string $title): void { $this->title = $title; }
 	public function _content(string $content): void { $this->content = $content; }
 }
 

@@ -15,14 +15,16 @@
 
 ---
 
-This is a fork of [xExtension-AiSummary](https://github.com/deimosfr/xExtension-AiSummary). Instead of adding a summary below each article, it **replaces the article title** with an AI-rewritten, de-clickbaited version — and it does so **automatically**, with no button to click.
+This is a fork of [xExtension-AiSummary](https://github.com/deimosfr/xExtension-AiSummary). Instead of adding a summary below each article, it **replaces the article title** with an AI-rewritten, de-clickbaited version.
+
+The rewriting happens **server-side, when feeds are refreshed** — the new title is saved to the database. That means it shows up **everywhere you read**: the FreshRSS web UI *and* external sync clients like **NetNewsWire**, Reeder, the official mobile apps, etc. (A browser-only approach can't do that, because external apps never load FreshRSS's web pages.)
 
 ## Features
 
-- **Automatic title rewriting** — As articles render, each headline is quietly replaced with a clearer, accurate, clickbait-free version. No button, no clicks.
-- **Cached per article** — Each title is generated once and cached in your browser (`localStorage`), so revisiting an article doesn't call the API again.
-- **Original preserved** — Rewritten titles are marked with a subtle underline; hover to see the original title in a tooltip.
-- **Auto-fetch full articles** — When the RSS feed only contains a short excerpt, the extension fetches the original page to give the AI enough context for a good title.
+- **Works in every client** — Titles are rewritten at ingestion and persisted, so NetNewsWire and other sync clients show the cleaned-up titles too, not just the web UI.
+- **Fully automatic** — Runs during feed refresh; no button, no per-article clicking.
+- **Generated once** — Each article's title is rewritten a single time, when it's first fetched, then stored.
+- **Never blocks ingestion** — If the AI call fails or times out, the original title is kept and the article is saved normally.
 - **4 AI providers** — Choose the one that fits your setup:
 
   | Provider | Default Model | API Key Required |
@@ -34,9 +36,10 @@ This is a fork of [xExtension-AiSummary](https://github.com/deimosfr/xExtension-
 
 - **Custom prompts** — Override the default title-rewriting prompt. Use `{content}`, `{title}`, and `{language}` placeholders in your template.
 - **Language override** — Choose the output language for rewritten titles independently of your FreshRSS UI language.
-- **Theme-aware styling** — Adapts to light and dark FreshRSS themes.
 - **14 languages** — cs, de, en, es, fr, it, ja, ko, nl, pl, pt-br, ru, tr, zh-cn.
-- **Secure** — API keys stay server-side. All requests are proxied through PHP.
+- **Secure** — API keys stay server-side. All requests are made from PHP.
+
+> **Scope:** Only articles fetched *after* you enable and configure the extension are rewritten. Articles already in your database keep their original titles. For a local/free setup, Ollama with a small fast model (e.g. `llama3.2:1b`) is a good fit since every new article triggers one call during refresh.
 
 ## Installation
 
@@ -78,30 +81,31 @@ The settings are identical to the original AI Summary extension:
 ## How It Works
 
 ```
-Article renders in FreshRSS
+Feed refresh (cron / "Actualize")
         |
         v
-  PHP hook injects a hidden <div class="ai-title-marker" data-entry-id="…">
+  FreshRSS fetches a new article
         |
         v
-  script.js finds the marker (on load + via MutationObserver)
+  entry_before_insert hook (extension.php)
         |
-        ├── Cached title in localStorage?  ── yes ──> swap headline instantly
+        └──> AiTitleService::rewriteTitle()
+                 ├── Strips HTML from the content, truncates it
+                 ├── Builds the title-rewrite prompt ({title}, {content}, {language})
+                 └── Calls the configured AI provider via cURL
+                          |
+                          v
+                 new title  ──>  $entry->_title(newTitle)
         |
-        └── no ──> POST ./?c=AiTitle&a=title ──> AiTitleController (PHP)
-                                                      |
-                                                      ├── Loads the entry
-                                                      ├── If excerpt is too short, fetches the full article
-                                                      ├── Strips HTML, truncates content
-                                                      ├── Builds the title-rewrite prompt
-                                                      └── Calls the AI provider (streamed via SSE)
-                                                              |
-                                                              v
-                                          JS accumulates the streamed title,
-                                          swaps the headline, and caches it
+        v
+  Article saved to the database with the rewritten title
+        |
+        v
+  Served to ALL clients via the sync API
+  (web UI, NetNewsWire, Reeder, official apps, …)
 ```
 
-The original headline is kept in a `data-ai-original-title` attribute and shown as a hover tooltip.
+If the AI call fails or times out, the hook keeps the original title and the article is saved normally — ingestion is never blocked.
 
 ## Development
 
@@ -128,14 +132,10 @@ php -l extension.php
 
 ```
 click-Unbait/
-├── extension.php               # Extension entrypoint (injects the marker)
+├── extension.php               # Entrypoint: registers entry_before_insert hook + settings
+├── AiTitleService.php          # Shared AI logic: content → rewritten title (all 4 providers)
 ├── configure.phtml             # Settings form
 ├── metadata.json               # Extension metadata
-├── Controllers/
-│   └── AiTitleController.php    # AI provider API proxy (title action)
-├── static/
-│   ├── script.js               # Automatic title replacement
-│   └── style.css               # Styling (light + dark)
 ├── i18n/                       # Translations (14 languages)
 ├── tests/                      # PHPUnit test suite
 └── .github/workflows/ci.yml    # CI pipeline

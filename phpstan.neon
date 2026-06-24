@@ -1,8 +1,8 @@
 parameters:
 	level: 10
 	paths:
-		- Controllers/
 		- extension.php
+		- AiTitleService.php
 		- configure.phtml
 	excludePaths:
 		analyseAndScan:

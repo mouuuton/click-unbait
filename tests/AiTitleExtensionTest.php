@@ -13,75 +13,31 @@ final class AiTitleExtensionTest extends TestCase {
 		$this->extension = new AiTitleExtension();
 	}
 
-	public function testEntryBeforeDisplayHookInjectsMarker(): void {
-		$entry = new FreshRSS_Entry('123', 'My Article', '<p>Original content</p>');
+	public function testInsertHookLeavesTitleWhenNotConfigured(): void {
+		// No provider/API key set → hook must be a no-op (no network).
+		$entry = new FreshRSS_Entry('1', 'Original title', '<p>Body</p>');
 
-		$result = $this->extension->entryBeforeDisplayHook($entry);
+		$result = $this->extension->entryBeforeInsertHook($entry);
 
-		self::assertStringContainsString('ai-title-marker', $result->content());
+		self::assertSame('Original title', $result->title());
 	}
 
-	public function testHookPreservesOriginalContent(): void {
-		$original = '<p>My article content</p>';
-		$entry = new FreshRSS_Entry('123', 'Title', $original);
-
-		$result = $this->extension->entryBeforeDisplayHook($entry);
-
-		self::assertStringContainsString($original, $result->content());
-	}
-
-	public function testHookInjectsBeforeOriginalContent(): void {
-		$original = '<p>Original</p>';
-		$entry = new FreshRSS_Entry('123', 'Title', $original);
-
-		$result = $this->extension->entryBeforeDisplayHook($entry);
-
-		$markerPos = strpos($result->content(), 'ai-title-marker');
-		$originalPos = strpos($result->content(), '<p>Original</p>');
-		self::assertLessThan($originalPos, $markerPos);
-	}
-
-	public function testHookSetsCorrectEntryId(): void {
-		$entry = new FreshRSS_Entry('456', 'Title', '<p>Content</p>');
-
-		$result = $this->extension->entryBeforeDisplayHook($entry);
-
-		self::assertStringContainsString('data-entry-id="456"', $result->content());
-	}
-
-	public function testHookEscapesEntryId(): void {
-		$entry = new FreshRSS_Entry('12"3<4', 'Title', '<p>Content</p>');
-
-		$result = $this->extension->entryBeforeDisplayHook($entry);
-
-		// ID should be escaped - no raw quotes or angle brackets in the attribute
-		self::assertStringNotContainsString('data-entry-id="12"3<4"', $result->content());
-		self::assertStringContainsString('data-entry-id="12&quot;3&lt;4"', $result->content());
-	}
-
-	public function testHookReturnsSameEntryInstance(): void {
+	public function testInsertHookReturnsSameEntryInstance(): void {
 		$entry = new FreshRSS_Entry('1', 'T', '<p>C</p>');
 
-		$result = $this->extension->entryBeforeDisplayHook($entry);
+		$result = $this->extension->entryBeforeInsertHook($entry);
 
 		self::assertSame($entry, $result);
 	}
 
-	public function testHookDoesNotInjectAnyButton(): void {
-		$entry = new FreshRSS_Entry('1', 'T', '<p>C</p>');
+	public function testInsertHookLeavesTitleWhenOpenAiKeyMissing(): void {
+		FreshRSS_Context::$user_conf->ai_title_provider = 'openai';
+		FreshRSS_Context::$user_conf->ai_title_api_key = '';
+		$entry = new FreshRSS_Entry('1', 'Keep me', '<p>Body</p>');
 
-		$result = $this->extension->entryBeforeDisplayHook($entry);
+		$result = $this->extension->entryBeforeInsertHook($entry);
 
-		// Title replacement is automatic — there must be no clickable control.
-		self::assertStringNotContainsString('<button', $result->content());
-	}
-
-	public function testHookInjectsExactMarkup(): void {
-		$entry = new FreshRSS_Entry('1', 'T', '<p>C</p>');
-
-		$this->extension->entryBeforeDisplayHook($entry);
-
-		$this->assertStringContainsString('<div class="ai-title-marker" data-entry-id="1"></div>', $entry->content());
+		self::assertSame('Keep me', $result->title());
 	}
 
 	public function testHandleConfigureActionSavesConfig(): void {

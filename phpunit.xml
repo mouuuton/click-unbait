@@ -13,7 +13,7 @@
 	<source>
 		<include>
 			<file>extension.php</file>
-			<directory>Controllers</directory>
+			<file>AiTitleService.php</file>
 		</include>
 	</source>
 </phpunit>

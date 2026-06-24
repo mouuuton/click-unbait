@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/AiTitleService.php';
+
 final class AiTitleExtension extends Minz_Extension {
 
 	public const TIMEOUT_MIN = 1;
@@ -10,11 +12,11 @@ final class AiTitleExtension extends Minz_Extension {
 
 	#[\Override]
 	public function init(): void {
-		Minz_View::appendStyle($this->getFileUrl('style.css', 'css'));
-		Minz_View::appendScript($this->getFileUrl('script.js', 'js'));
 		$this->registerTranslates();
-		$this->registerHook('entry_before_display', [$this, 'entryBeforeDisplayHook']);
-		$this->registerController('AiTitle');
+		// Rewrite the title server-side, before the entry is saved, so the new
+		// title is persisted and served to every client (web UI, NetNewsWire,
+		// official apps, …) via the sync API — not just the browser.
+		$this->registerHook('entry_before_insert', [$this, 'entryBeforeInsertHook']);
 	}
 
 	#[\Override]
@@ -42,14 +44,24 @@ final class AiTitleExtension extends Minz_Extension {
 	}
 
 	/**
-	 * Inject a hidden marker carrying the entry id next to the article content.
-	 * The marker is picked up by script.js, which automatically requests an
-	 * AI-rewritten title and swaps it into the article heading — no button.
+	 * Runs during feed refresh, before each new entry is inserted. Replaces the
+	 * title with an AI-rewritten, de-clickbaited version. Failures are swallowed
+	 * so article ingestion is never blocked.
 	 */
-	public function entryBeforeDisplayHook(FreshRSS_Entry $entry): FreshRSS_Entry {
-		$entryId = htmlspecialchars((string) $entry->id(), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
-		$html = '<div class="ai-title-marker" data-entry-id="' . $entryId . '"></div>';
-		$entry->_content($html . $entry->content());
+	public function entryBeforeInsertHook(FreshRSS_Entry $entry): FreshRSS_Entry {
+		try {
+			$cfg = AiTitleService::readConfig(FreshRSS_Context::userConf());
+			if (!AiTitleService::isConfigured($cfg)) {
+				return $entry;
+			}
+			$service = new AiTitleService();
+			$newTitle = $service->rewriteTitle($entry->title(), $entry->content(), $cfg);
+			if ($newTitle !== null && $newTitle !== '' && $newTitle !== $entry->title()) {
+				$entry->_title($newTitle);
+			}
+		} catch (\Throwable $e) {
+			// Never block ingestion on an AI failure.
+		}
 		return $entry;
 	}
 }
