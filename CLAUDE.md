@@ -42,7 +42,7 @@ vendor/bin/phpstan analyse                    # static analysis (level 10)
 php -l extension.php                          # lint a PHP file
 ```
 
-No build step required. To install the extension locally, symlink or copy this directory into FreshRSS's `extensions/` folder, named `xExtension-AiTitle`.
+No build step required. To install the extension locally, symlink or copy this directory into FreshRSS's `extensions/` folder, named `click-Unbait` (the folder name is arbitrary — FreshRSS reads `metadata.json`, not the directory name).
 
 ## Testing
 

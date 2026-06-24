@@ -44,16 +44,16 @@ This is a fork of [xExtension-AiSummary](https://github.com/deimosfr/xExtension-
 
 ```bash
 cd /path/to/FreshRSS/extensions
-git clone <this-repo-url> xExtension-AiTitle
+git clone https://github.com/mouuuton/click-unbait.git click-Unbait
 ```
 
-> The folder **must** be named `xExtension-AiTitle` (the entrypoint in `metadata.json` is `AiTitle`).
+> The folder name is up to you (FreshRSS reads `metadata.json`, not the folder name); `click-Unbait` is used throughout these docs.
 
 ### Manual
 
 1. Download the repository ZIP.
 2. Extract it into your FreshRSS `extensions/` directory.
-3. Rename the folder to `xExtension-AiTitle`.
+3. Rename the folder to `click-Unbait`.
 
 ### Enable
 
@@ -127,7 +127,7 @@ php -l extension.php
 ### Project Structure
 
 ```
-xExtension-AiTitle/
+click-Unbait/
 ├── extension.php               # Extension entrypoint (injects the marker)
 ├── configure.phtml             # Settings form
 ├── metadata.json               # Extension metadata
